@@ -47,7 +47,11 @@ function isCycleDetected<V>(
   current: Container<V>
 ): boolean {
   for (const [seenPrevious, seenCurrent] of stack) {
-    // If both sides match an ancestor pair by reference, we have looped.
+    /**
+     * If [previous, current] matches an ancestor pair [seenPrevious, seenCurrent]
+     * (already in the recursion stack), a circular reference exists.
+     * Skip recursion.
+     */
     if (seenPrevious === previous && seenCurrent === current) return true;
   }
   return false;
@@ -89,16 +93,16 @@ function pushCycleEntry<V>(
 
 /**
  * Iterates over the keys (or indices) of two containers to identify additions,
- * removals, and modifications.
+ * removals, and modifications using a bottom-up, depth-first strategy.
  *
- * Logic:
- * 1. Deletions & Updates: Iterates over keys in the `previousContainer`.
- *    - If a key is missing in `currentContainer`, emits a `REMOVE`.
- *    - If a key exists in both, proceeds to recursive or shallow comparison.
- * 2. Recursion: If both values are traversable containers, checks for cycles and recurses.
- * 3. Leaf Comparison: If values are primitives or "Rich Types" (e.g., Date), compares them by value/reference.
- * 4. Additions: Iterates over keys in the `currentContainer`.
- *    - If a key is missing in `previousContainer`, emits a `CREATE`.
+ * Algorithm:
+ * Two-phase comparison to identify asymmetries:
+ * - Phase 1: OLD vs NEW (removals & modifications)
+ * - Phase 2: NEW vs OLD (additions)
+ *
+ * Key Design:
+ * Container compatibility (both Arrays or both Objects) determines whether
+ * traversal recurses or treats values as atomic leaves.
  *
  * Execution Flow (Depth-First, Bottom-Up):
  * The algorithm performs a Depth-First Traversal, descending into the tree
@@ -107,8 +111,10 @@ function pushCycleEntry<V>(
  * as the recursion stack returns.
  *
  * Trace Example:
- * _Comparing `prev: { users: [{ name: "Alice" }] }` vs
- *            `curr: { users: [{ name: "Bob" }] }`_
+ *
+ * Comparing:
+ *   `prev: { users: [{ name: "Alice" }] }`
+ *   `curr: { users: [{ name: "Bob" }] }`
  *
  * 1. Dive (Root → Leaf):
  *    - Root: Iterates keys. Finds `"users"`.
@@ -134,7 +140,7 @@ function pushCycleEntry<V>(
  * Rationale for Bottom-Up Strategy:
  * 1. GC Pressure:
  *    A Top-Down approach (passing accumulated paths down) forces array
- *    allocation for *every* node visited, creating significant Garbage
+ *    allocation for every node visited, creating significant Garbage
  *    Collection overhead.
  * 2. Laziness:
  *    The Bottom-Up approach is lazy; the cost of path construction (array
@@ -162,37 +168,50 @@ function compareChildren<V>(
   const isCurrentArray = Array.isArray(currentContainer);
   const previousKeys = Object.keys(previousContainer);
 
-  // =========================================================================
-  // Phase 1: Detect Removals and Modifications
-  //
-  // Strategy: Iterate over the OLD state (`previousContainer`).
-  // 1. If a key is missing in the NEW state, it was REMOVED.
-  // 2. If a key exists in both, compare values to find CHANGES.
-  // =========================================================================
-  for (const key of previousKeys) {
-    // 1. Configuration Check (Skip List)
-    if (shouldSkipKey(key, isPreviousArray, options.keysToSkip)) continue;
+  /**
+   * Phase 1: Deletions & Updates
+   *
+   * Iterate over the OLD state (`previousContainer`).
+   * Execute per-key: Configuration → Removal Detection → Value Comparison.
+   */
+  for (const previousKey of previousKeys) {
+    /**
+     * Step 1: Configuration Check
+     *
+     * Skip keys based on options.keysToSkip.
+     */
+    if (shouldSkipKey(previousKey, isPreviousArray, options.keysToSkip))
+      continue;
 
-    const previousValue = getSafeValue(previousContainer, key)!;
-    const pathSegment = formatPathKey(key, isPreviousArray);
+    const previousValue = getSafeValue(previousContainer, previousKey)!;
+    const pathSegment = formatPathKey(previousKey, isPreviousArray);
 
-    // 2. Removal Check
-    if (!(key in currentContainer)) {
+    /**
+     * Step 2: Removal Detection
+     *
+     * Check if previousKey exists in currentContainer.
+     * Absence indicates the key was removed; emit a REMOVE operation.
+     */
+    if (!(previousKey in currentContainer)) {
       differences.push(createRemove([pathSegment], previousValue));
       continue;
     }
 
-    const currentValue = getSafeValue(currentContainer, key)!;
+    const currentValue = getSafeValue(currentContainer, previousKey)!;
 
-    // -----------------------------------------------------------------------
-    // Step 3: Deep Comparison (Recursion)
-    //
-    // Strategy:
-    // 1. Validate: Both values must be compatible containers (e.g., both Arrays or both Objects).
-    // 2. Guard: Check for circular references (if tracking is enabled).
-    // 3. Filter: "Rich Types" (Date, RegExp) are treated as atomic leaves, not containers.
-    // 4. Execute: Recurse into children and prepend the current path segment to results.
-    // -----------------------------------------------------------------------
+    /**
+     * Step 3: Deep Comparison (Recursion)
+     *
+     * Strategy:
+     * 1. Validate:
+     *    Both values must be compatible containers (both Arrays or both Objects).
+     * 2. Guard:
+     *    Check for circular references (if tracking is enabled).
+     * 3. Exclude:
+     *    Rich Types (Date, RegExp) bypass recursion and are handled in Step 4.
+     * 4. Execute:
+     *    Recurse into children and prepend the current path segment to results.
+     */
     if (
       isContainer(previousValue) &&
       isContainer(currentValue) &&
@@ -226,15 +245,24 @@ function compareChildren<V>(
       }
     }
 
-    // -----------------------------------------------------------------------
-    // Step 4: Leaf Comparison (Shallow)
-    //
-    // Condition: Values are Primitives, "Rich Types", or Mismatched Containers.
-    // Strategy:
-    // 1. Compare values directly using `Object.is`.
-    // 2. handle "Boxed Primitives" (e.g., `new Number(1)`) explicitly to ensure value equality.
-    // 3. Emit a CHANGE if values differ.
-    // -----------------------------------------------------------------------
+    /**
+     * Step 4: Leaf Comparison (Shallow)
+     *
+     * Applies when:
+     * - Values are primitives/Rich Types (Date, RegExp) that bypass recursion.
+     * - Step 3 validation fails: values are not compatible containers (e.g., Array vs Object).
+     *
+     * Values are compared atomically.
+     *
+     * Strategy:
+     * 1. Compare:
+     *    Use `Object.is` for direct value comparison.
+     * 2. Handle:
+     *    Check boxed primitives (Number, String, Boolean object wrappers)
+     *    explicitly for value equality.
+     * 3. Emit:
+     *    Create a CHANGE operation if values differ.
+     */
     const hasValueMismatch = !Object.is(previousValue, currentValue);
 
     const areBoxedPrimitives =
@@ -249,22 +277,32 @@ function compareChildren<V>(
     }
   }
 
-  // =========================================================================
-  // Phase 2: Detect Additions
-  //
-  // Strategy: Iterate over the NEW state (`currentContainer`).
-  // 1. If a key is missing in the OLD state, it was CREATED.
-  // 2. Note: Modifications were already caught in Phase 1, skip them here.
-  // =========================================================================
+  /**
+   * Phase 2: Additions
+   *
+   * Iterate over the NEW state (`currentContainer`).
+   * Execute per-key: Configuration → Addition Detection.
+   */
   const currentKeys = Object.keys(currentContainer);
 
-  for (const key of currentKeys) {
-    if (shouldSkipKey(key, isCurrentArray, options.keysToSkip)) continue;
+  for (const currentKey of currentKeys) {
+    /**
+     * Step 1: Configuration Check
+     *
+     * Skip keys based on options.keysToSkip.
+     */
+    if (shouldSkipKey(currentKey, isCurrentArray, options.keysToSkip)) continue;
 
-    if (!(key in previousContainer)) {
-      const currentValue = getSafeValue(currentContainer, key)!;
+    /**
+     * Step 2: Addition Detection
+     *
+     * Check if currentKey exists in previousContainer.
+     * Absence indicates the key was created; emit a CREATE operation.
+     */
+    if (!(currentKey in previousContainer)) {
+      const currentValue = getSafeValue(currentContainer, currentKey)!;
       differences.push(
-        createCreate([formatPathKey(key, isCurrentArray)], currentValue)
+        createCreate([formatPathKey(currentKey, isCurrentArray)], currentValue)
       );
     }
   }
