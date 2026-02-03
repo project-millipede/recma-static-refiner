@@ -54,7 +54,7 @@ import { type StaticResult, UNRESOLVED, resolved } from './constants';
  *   - `success: true` when `node` is a supported `Literal` form
  *   - `success: false` otherwise
  */
-function tryResolveLiteral(node: types.Node): StaticResult {
+export function tryResolveLiteral(node: types.Node): StaticResult {
   if (is.literal(node)) {
     // Access the native JavaScript value pre-evaluated by the parser.
     // (e.g., a real BigInt, RegExp instance, or primitive).
@@ -159,7 +159,7 @@ function tryResolveLiteral(node: types.Node): StaticResult {
  *   - `success: true` when `node` is a supported global-constant identifier
  *   - `success: false` otherwise
  */
-function tryResolveIdentifier(node: types.Node): StaticResult {
+export function tryResolveIdentifier(node: types.Node): StaticResult {
   if (is.identifier(node)) {
     // Switch on `node.name` (the variable name).
     // Unlike Literals (which store data in `.value`), Identifiers store
@@ -271,7 +271,7 @@ function tryResolveIdentifier(node: types.Node): StaticResult {
  *   - `success: true` when the template and all interpolations are statically resolvable
  *   - `success: false` otherwise
  */
-function tryResolveTemplate(node: types.Node): StaticResult {
+export function tryResolveTemplate(node: types.Node): StaticResult {
   if (is.templateLiteral(node)) {
     const parts: string[] = [];
 
