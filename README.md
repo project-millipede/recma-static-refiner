@@ -33,11 +33,11 @@ Not all props are statically extractable. Runtime expressions (variables, functi
 
 At build time, the plugin extracts **statically determinable data** and runs it through three phases:
 
-| Phase             | Input              | Output                  | Purpose                                             |
-| ----------------- | ------------------ | ----------------------- | --------------------------------------------------- |
-| **1. Validation** | Raw props from MDX | Validated/coerced props | Enforce contracts using Zod/Valibot/ArkType         |
-| **2. Derivation** | Validated props    | Props + computed values | Pre-calculate derived data (normalization, layouts) |
-| **3. Pruning**    | Full prop set      | Cleaned prop set        | Strip source-only data before emission              |
+| Phase             | Input              | Output                      | Purpose                                             |
+| ----------------- | ------------------ | --------------------------- | --------------------------------------------------- |
+| **1. Validation** | Raw props from MDX | Validated/transformed props | Enforce contracts using Zod/Valibot/ArkType         |
+| **2. Derivation** | Validated props    | Props + computed values     | Pre-calculate derived data (normalization, layouts) |
+| **3. Pruning**    | Full prop set      | Cleaned prop set            | Strip source-only data before emission              |
 
 The result: your runtime components receive plain, static objects with all processing already complete.
 
@@ -49,34 +49,69 @@ npm install recma-static-refiner
 pnpm add recma-static-refiner
 ```
 
-## Quick Start
+## Examples
 
-A minimal example that coerces a string prop to a number:
+### Simple Prop Transformation (Optional)
+
+Transform a string prop to a number:
 
 ```typescript
-import { defineRuleRegistry, defineRule } from 'recma-static-refiner';
-import { z } from 'zod';
-
 const rules = defineRuleRegistry({
   Counter: defineRule<{ initial: number }>()({
     schema: z.object({ initial: z.coerce.number() })
   })
 });
-
-// Add to your MDX compiler's recmaPlugins
-[recmaStaticRefiner, { rules }];
 ```
-
-Input:
 
 ```mdx
-<Counter initial='5' />
+<Counter initial="5" />
 ```
 
-Output (validated & coerced):
+Output: `<Counter initial={5} />`
 
-```jsx
-<Counter initial={5} />
+> For simple cases like this, you don't need this plugin—write `<Counter initial={5} />` directly instead.
+
+### Real-World: Meta Props (Essential)
+
+Where this plugin becomes essential: processing **meta props** from CodeHike or remark plugins, where values are extracted as strings:
+
+```mdx
+<PostList>
+  # !!posts
+  !author "42"
+  !createdAt "2020-01-01T10:00:00Z"
+  !contentType "article"
+  ## !content
+  ### !text
+  Hello world
+</PostList>
+```
+
+```typescript
+type PostListProps = {
+  posts: {
+    author: number;
+    createdAt: Date;
+    contentType: string;
+  }[];
+};
+
+const rules = defineRuleRegistry({
+  PostList: defineRule<PostListProps>()({
+    schema: z.object({
+      posts: z.array(
+        z.object({
+          author: z.coerce.number(), // "42" → 42
+          createdAt: z.iso.datetime(), // string → Date
+          contentType: z.string()
+        })
+      )
+    }),
+    derive: (input, set) => {
+      set({ postCount: input.posts.length }); // Pre-computed at build
+    }
+  })
+});
 ```
 
 ## How to Use
@@ -122,13 +157,13 @@ const CustomComponentSchema = z.object({
 // 3. Build your rule registry
 export const staticRefinerRules = defineRuleRegistry({
   CustomComponent: defineRule<CustomComponentProps>()({
-    // Schema validates and coerces props at build time
+    // Schema validates and transforms props at build time
     schema: CustomComponentSchema,
 
     // Derive computes new props based on the upstream input
     derive: (derivationInput, set) => {
       // derivationInput is InferOutput<S, Props>:
-      // - With schema: SchemaValidatedProps<S> (coerced/validated output)
+      // - With schema: SchemaValidatedProps<S> (validated/transformed output)
       // - Without schema: PassthroughProps<Props> (direct pass-through)
       //
       // Schema transformed "42" → 42, so derivationInput.count is number
@@ -139,8 +174,8 @@ export const staticRefinerRules = defineRuleRegistry({
       });
     },
 
-    // PruneKeys removes source-only props from the runtime output
-    pruneKeys: ['_sourceId', 'title']
+    // PruneKeys removes props after derivation (no longer needed at runtime)
+    pruneKeys: ['title', 'count']
   }),
 
   // Add more component rules as needed
@@ -198,15 +233,15 @@ export default withMdx(nextConfig);
 Given this MDX:
 
 ```mdx
-<CustomComponent title='Hello World' count='42' _sourceId='internal-123' />
+<CustomComponent title="Hello World" count="42" _sourceId="internal-123" />
 ```
 
 With the rule defined above, the plugin will:
 
-1. **Validate:** Ensure `title` is a string and coerce `count` to a number
+1. **Validate:** Ensure `title` is a string and transform `count` to a number
 2. **Derive:** Compute `doubledCount` as `count * 2`
-3. **Prune:** Remove `_sourceId` and `title` from the runtime output
-4. **Output:** The compiled component receives only `{ count: 42, doubledCount: 84 }`
+3. **Prune:** Remove `title`, `count`, and `_sourceId` from the runtime output
+4. **Output:** The compiled component receives only `{ doubledCount: 84 }`
 
 ## Configuration Reference
 
@@ -222,11 +257,11 @@ With the rule defined above, the plugin will:
 
 Each rule can configure three pipeline phases. **All features are optional**, but at least one must be defined per rule:
 
-| Feature     | Purpose                                           | When to Use                                |
-| ----------- | ------------------------------------------------- | ------------------------------------------ |
-| `schema`    | Validates and coerces props using Standard Schema | Ensure props conform to expected types     |
-| `derive`    | Computes derived props from upstream input        | Build computed state from validated props  |
-| `pruneKeys` | Removes source-only props from runtime output     | Strip internal data used only during build |
+| Feature     | Purpose                                              | When to Use                                |
+| ----------- | ---------------------------------------------------- | ------------------------------------------ |
+| `schema`    | Validates and transforms props using Standard Schema | Ensure props conform to expected types     |
+| `derive`    | Computes derived props from upstream input           | Build computed state from validated props  |
+| `pruneKeys` | Removes source-only props from runtime output        | Strip internal data used only during build |
 
 ### Derive Function Input Types
 
@@ -242,13 +277,13 @@ InferOutput<S, Props> resolves to:
 └─────────────────────────────────────┘
 ```
 
-| Aspect            | With Schema                        | Without Schema                     |
-| ----------------- | ---------------------------------- | ---------------------------------- |
-| **Resolved Type** | `SchemaValidatedProps<S>`          | `PassthroughProps<Props>`          |
-| **Runtime Value** | Schema's `decode` output           | Props as provided at instantiation |
-| **Completeness**  | Guaranteed (schema enforces shape) | Props as provided                  |
-| **Coercion**      | Applied (`"42"` → `42`)            | None (raw values)                  |
-| **Type Safety**   | Schema output shape                | Props interface, all optional      |
+| Aspect             | With Schema                        | Without Schema                     |
+| ------------------ | ---------------------------------- | ---------------------------------- |
+| **Resolved Type**  | `SchemaValidatedProps<S>`          | `PassthroughProps<Props>`          |
+| **Runtime Value**  | Schema's `decode` output           | Props as provided at instantiation |
+| **Completeness**   | Guaranteed (schema enforces shape) | Props as provided                  |
+| **Transformation** | Applied (`"42"` → `42`)            | None (raw values)                  |
+| **Type Safety**    | Schema output shape                | Props interface, all optional      |
 
 **With Schema:**
 
@@ -308,12 +343,12 @@ CleanComponent: defineRule<Props>()({
 }),
 ```
 
-| Combination                          | When to Use                                                               |
-| ------------------------------------ | ------------------------------------------------------------------------- |
-| **Full** (validate + derive + prune) | Maximum control—coerce inputs, compute derived state, strip internal data |
-| **Validate only**                    | Type safety and coercion without transformation or cleanup                |
-| **Derive only**                      | Trusted inputs that need computed values based on static props            |
-| **Prune only**                       | Clean up props from external sources without validation or derivation     |
+| Combination                          | When to Use                                                                  |
+| ------------------------------------ | ---------------------------------------------------------------------------- |
+| **Full** (validate + derive + prune) | Maximum control—transform inputs, compute derived state, strip internal data |
+| **Validate only**                    | Type safety and transformation without derivation or cleanup                 |
+| **Derive only**                      | Trusted inputs that need computed values based on static props               |
+| **Prune only**                       | Clean up props from external sources without validation or derivation        |
 
 ### Error Handling
 
@@ -334,7 +369,7 @@ The plugin throws **build-time errors** for any validation or patch failure. It 
 | Static literal props   | ✅ Yes       | Strings, numbers, booleans, null                      |
 | Static arrays/objects  | ✅ Yes       | Without spreads or computed keys                      |
 | Schema validation      | ✅ Yes       | Zod, Valibot, ArkType at build time                   |
-| Prop coercion          | ✅ Yes       | `"42"` → `42` via schema                              |
+| Prop transformation    | ✅ Yes       | `"42"` → `42` via schema                              |
 | Derived prop injection | ✅ Yes       | Computed at build, emitted as literals                |
 | Prop removal           | ✅ Yes       | Source-only keys stripped from output                 |
 | Dynamic expressions    | ⚠️ Preserved | Passed through unchanged (see `preservedKeys`)        |
