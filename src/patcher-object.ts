@@ -226,37 +226,6 @@ function tryAppendObjectKeySegment(
 }
 
 /**
- * Attempts to append an array-index segment (e.g. `0`, `1`, `2`) when the current
- * cursor is a node occupying an `elements[index]` slot in an `ArrayExpression`.
- *
- * Return values (2-state):
- * - `NodePath`  : matched; an index segment was appended and the returned path is the next cursor.
- * - `undefined` : not applicable; caller should try other segment types and keep climbing.
- *
- * @param cursor
- *   Current node path while walking upward through the AST.
- * @param pathSegments
- *   Collected `PropertyPath` segments (built in reverse order while climbing).
- * @returns
- *   Next cursor on match, otherwise `undefined`.
- */
-// function tryAppendArrayIndexSegment(
-//   cursor: NodePath<types.Node>,
-//   pathSegments: PropertyPath
-// ): NodePath<types.Node> | undefined {
-//   const parentNode = cursor.parentPath?.node;
-//   if (!parentNode) return undefined;
-
-//   if (is.arrayExpression(parentNode) && typeof cursor.key === 'number') {
-//     const indexSegment = cursor.key;
-//     pathSegments.push(indexSegment);
-//     return cursor.parentPath;
-//   }
-
-//   return undefined;
-// }
-
-/**
  * Computes the logical `PropertyPath` from the patchable props root to `targetPath`.
  *
  * The patcher uses this mapping to translate an AST position (`NodePath`) into the
@@ -302,15 +271,6 @@ function getRelativePathFromRoot(
       cursor = nextFromObject;
       continue;
     }
-
-    /**
-     * 3. Array index segment (e.g. [0], [1])
-     */
-    // const nextFromArray = tryAppendArrayIndexSegment(cursor, pathSegments);
-    // if (nextFromArray) {
-    //   cursor = nextFromArray;
-    //   continue;
-    // }
 
     // Otherwise keep climbing.
     cursor = cursor.parentPath as NodePath<types.Node>;
@@ -446,12 +406,11 @@ function applyObjectPropertyPatchesIfNeeded(
    * 3. Compute lookup key for this property
    * --------------------------------------
    * `getRelativePathFromRoot` maps the current `Property` node back to a logical
-   * `PropertyPath` from the props root (e.g. ["title"], ["items", 1, "id"]).
+   * `PropertyPath` from the props root.
    *
    * This works uniformly for:
-   * - top-level props:            ["title"]
-   * - nested object props:        ["meta", "author", "name"]
-   * - object props inside arrays: ["items", 1, "id"]
+   * - Top-level props:     ["title"]
+   * - Nested object props: ["meta", "author", "name"]
    *
    * The property value node type is not relevant here: `value` may be a Literal,
    * ObjectExpression, ArrayExpression, etc. The patcher replaces the `value`
@@ -487,102 +446,6 @@ function applyObjectPropertyPatchesIfNeeded(
   state.setPatchByPathKey.delete(pathKey);
 }
 
-// function applyArrayElementPatchesIfNeeded(
-//   path: NodePath<types.ArrayExpression>,
-//   state: PatchApplyState
-// ) {
-//   /**
-//    * 1. Preconditions
-//    * ----------------
-//    * Only proceed when the current node exists and can be mapped to a `PropertyPath`.
-//    */
-//   if (!path.node) return;
-
-//   const arrayPath = getRelativePathFromRoot(path);
-//   if (!arrayPath) return;
-
-//   /**
-//    * 2. Iterate array slots
-//    * ----------------------
-//    * Array patches target index slots (e.g. ["items", 1]). The visitor runs on the
-//    * parent `ArrayExpression`, so it iterates `elements[index]` directly to ensure
-//    * every index is checked regardless of the element node type.
-//    *
-//    * `path.get('elements')` is used to obtain `NodePath`s for each slot so existing
-//    * elements can be replaced via `replaceWith(...)`.
-//    *
-//    * Note:
-//    * This currently scans all array slots. If very large array literals become common and
-//    * only a small subset of indices are patched, an optimization can index slot-level
-//    * patches by `arrayPath` to visit only the touched indices (O(k) vs O(n)).
-//    */
-//   const elementPaths = path.get('elements') as NodePath<types.Node>[];
-
-//   for (let index = 0; index < elementPaths.length; index++) {
-//     const elementPath = elementPaths[index];
-
-//     /**
-//      * 3. Compute lookup key for this slot
-//      * ----------------------------------
-//      */
-//     const itemPath: PropertyPath = [...arrayPath, index];
-//     const pathKey = stringifyPropertyPath(itemPath);
-
-//     /**
-//      * Array slot vs. nested property (important distinction)
-//      * ------------------------------------------------------
-//      * This function applies slot-level patches that target the element itself:
-//      * - delete ["items", 1] => creates a hole at index 1 (indices do not shift)
-//      * - set    ["items", 1] => replaces the entire element at index 1
-//      *
-//      * Nested paths target properties inside an element object and are handled
-//      * later by the `Property` visitor during traversal:
-//      * - set ["items", 1, "id"] => updates the `id` property inside items[1]
-//      *   (no hole; the element object remains in place)
-//      */
-
-//     /**
-//      * 4. Apply deletion (keeps array shape)
-//      * -------------------------------------
-//      * Deletions produce a hole to avoid shifting indices.
-//      *
-//      * Array-index deletes are supported here (delete => hole to avoid shifting indices).
-//      * In the current pipeline, delete patches are typically produced for:
-//      * 1. Object-key removals from diffing (when enabled).
-//      * 2. Explicit prune steps (object keys only).
-//      * Numeric-path deletes are only possible if an upstream planner emits them explicitly.
-//      */
-//     if (state.deletePathKeys.has(pathKey)) {
-//       path.node.elements[index] = null;
-//       state.deletePathKeys.delete(pathKey);
-//       continue;
-//     }
-
-//     /**
-//      * 5. Apply set (replace element or fill hole)
-//      * -------------------------------------------
-//      * Slot-level set replaces the entire element expression at `elements[index]`
-//      * or fills the slot if it is currently empty.
-//      */
-//     const patch = state.setPatchByPathKey.get(pathKey);
-//     if (!patch) continue;
-
-//     const newValue = buildEstreeValue(patch.value, state.expressionRefResolver);
-
-//     if (elementPath?.node) {
-//       // Use the visitor method to preserve traversal context when the node exists.
-//       elementPath.replaceWith(newValue);
-//     } else {
-//       // If the slot is currently a hole (null), `elementPath.replaceWith`
-//       // cannot be used because there is no node to replace.
-//       // Direct assignment to the parent AST node is required to fill the hole.
-//       path.node.elements[index] = newValue;
-//     }
-
-//     state.setPatchByPathKey.delete(pathKey);
-//   }
-// }
-
 export type ApplyPatchesOptions = {
   /**
    * Resolver used to inline ExpressionRef placeholders back into real ESTree expressions.
@@ -617,8 +480,7 @@ export type ApplyPatchesResult = {
    * Canonical keys for unapplied "delete" operations.
    *
    * Each key corresponds to a planned `delete` patch that could not be applied.
-   * Deletes can target object properties (removing a `Property`) or array slots
-   * (clearing an element), but are still constrained by leaf-only rules.
+   * Deletes target object properties (removing a `Property`).
    */
   remainingDeletePathKeys: string[];
 
@@ -647,7 +509,7 @@ export type ApplyPatchesResult = {
  *
  * As patches are applied during traversal, entries are removed from these
  * collections. Any keys that remain represent patches that could not be applied
- * under the current AST shape (e.g. missing path, non-literal root, array holes).
+ * under the current AST shape (e.g. missing path, non-literal root).
  *
  * @param setPatchByPathKey
  *   Map of remaining unapplied "set" patches keyed by canonical path key.
@@ -682,41 +544,12 @@ function finalizeApplyPatchesResult(
 /**
  * Creates the ESTree visitor implementation for applying patches.
  *
- * Only two visitor hooks are required:
- * 1. `Property`
- *    - Applies object-key patches by replacing/removing `Property` nodes.
- * 2. `ArrayExpression`
- *    - Applies array-index patches by iterating the array `elements`
- *      (via `applyArrayElementPatchesIfNeeded`).
+ * Only `Property` visitor is required:
+ * - Applies object-key patches by replacing/removing `Property` nodes.
  *
- * Not needed (and why):
- * - `Literal` / `ObjectExpression` visitors for array patching.
- *   Array elements are not limited to literals or object literals; they can be any
- *   expression node type (Identifier, CallExpression, JSXElement, etc.).
- *
- *   If array patching only ran in `Literal` / `ObjectExpression` visitors, then element
- *   patches are applied only when the element happens to be one of those types and are
- *   silently missed for other element types.
- *
- * Example (why patch at `ArrayExpression`):
- *
- *   // Source
- *   items={[ 1, foo, { a: 1 }, foo() ]}
- *
- *   // Element node types:
- *   //   index 0 -> Literal
- *   //   index 1 -> Identifier
- *   //   index 2 -> ObjectExpression
- *   //   index 3 -> CallExpression
- *
- *   // Patches targeting these indices:
- *   //   ["items", 0]  // would be observed by a `Literal` visitor
- *   //   ["items", 1]  // would be missed without an `Identifier` visitor
- *   //   ["items", 2]  // would be observed by an `ObjectExpression` visitor
- *   //   ["items", 3]  // would be missed without a `CallExpression` visitor
- *
- * Applying array-index patches from the parent `ArrayExpression` iterates `elements[0..n]`,
- * so every index is checked regardless of the element node type.
+ * Note:
+ * Array values are replaced atomically (entire ArrayExpression),
+ * not patched element-by-element, per the {@link LeafOnlyPatchingConstraint}.
  *
  * @returns
  *   A visitor object compatible with `estree-toolkit` traversal.
@@ -726,10 +559,6 @@ function createPatchApplicationVisitors(): Visitors<PatchApplyState> {
     Property(path, state) {
       applyObjectPropertyPatchesIfNeeded(path, state);
     }
-
-    // ArrayExpression(path, state) {
-    //   applyArrayElementPatchesIfNeeded(path, state);
-    // }
   };
 }
 
