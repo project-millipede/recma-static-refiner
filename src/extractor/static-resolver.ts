@@ -275,6 +275,8 @@ function tryResolveTemplate(node: types.Node): StaticResult {
   if (is.templateLiteral(node)) {
     const parts: string[] = [];
 
+    const expressions = node.expressions;
+
     // Iterates over Quasis to frame the structure
     // See [2] Algorithmic Strategy
     for (const [index, quasi] of node.quasis.entries()) {
@@ -287,14 +289,17 @@ function tryResolveTemplate(node: types.Node): StaticResult {
 
       // Step 2: Resolve Expression (The Interpolation `${...}`)
       // Loop runs N+1 times (Quasis); this block runs N times (Expressions).
-      if (index < node.expressions.length) {
-        // See [B] Recursion & Value Resolution
-        const exprResult = tryResolveStaticValue(node.expressions[index]);
+      if (index < expressions.length) {
+        const expression = expressions[index];
+        if (!expression) return UNRESOLVED;
 
-        if (!exprResult.success) return UNRESOLVED;
+        // See [B] Recursion & Value Resolution
+        const result = tryResolveStaticValue(expression);
+
+        if (!result.success) return UNRESOLVED;
 
         // See [C] Spec Compliance: Stringification
-        parts.push(`${exprResult.value}`);
+        parts.push(`${result.value}`);
       }
     }
 
