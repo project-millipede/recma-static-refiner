@@ -1,23 +1,19 @@
 import { SKIP_VALUE } from '../constants';
 
 /**
- * Shared test types for extractor suites.
- */
-
-/**
- * TYPE DEFINITION: Extraction Result
+ * Extraction Result
  * Represents the specific output signature of the Extraction Engine.
  */
 export type ExtractionResult = unknown | typeof SKIP_VALUE;
 
 /**
- * TYPE DEFINITION: Extract Props Result
+ * Extract Props Result
  * Mirrors the public adapter return type.
  */
 export type ExtractPropsResult = Record<string, unknown> | null;
 
 /**
- * TYPE DEFINITION: Test Scenario
+ * Test Scenario
  * Represents a single row of data in a table-driven test.
  *
  * @template T - The type of the expected result (defaults to unknown).
