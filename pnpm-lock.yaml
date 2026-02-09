@@ -15,8 +15,8 @@ importers:
         specifier: ^1.7.13
         version: 1.7.13
       estree-util-to-static-value:
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: ^1.0.0
+        version: 1.0.0
       estree-util-value-to-estree:
         specifier: ^3.5.0
         version: 3.5.0
@@ -405,8 +405,8 @@ packages:
   estree-toolkit@1.7.13:
     resolution: {integrity: sha512-/fLCEcVBUgAtMkGXZHplPVyUv7wiSfsCGubBdM16n1iYCidPfyk1Kk1U0wAxLZADuA3z8k87DfVYXlBmHJeekg==}
 
-  estree-util-to-static-value@0.5.0:
-    resolution: {integrity: sha512-ptzdfAiaVwWPhhnPwlwJnHN/9rUp/LneLKwIjbEPH+wa22qwwOuAhcnKMjXjhy8KIG50d/whqP0OoURv+skvLA==}
+  estree-util-to-static-value@1.0.0:
+    resolution: {integrity: sha512-/1s8GsmoZXJ/IawXoGPqNFtxS7Naiss0WVzoPrb5PElMTxoyhFPCnzoAPAlvy9+AKYTyZRWvVKK4nxOmDppulQ==}
 
   estree-util-value-to-estree@3.5.0:
     resolution: {integrity: sha512-aMV56R27Gv3QmfmF1MY12GWkGzzeAezAX+UplqHVASfjc9wNzI/X6hC0S9oxq61WT4aQesLGslWP9tKk6ghRZQ==}
@@ -848,7 +848,7 @@ snapshots:
       '@types/estree': 1.0.8
       '@types/estree-jsx': 1.0.5
 
-  estree-util-to-static-value@0.5.0:
+  estree-util-to-static-value@1.0.0:
     dependencies:
       estree-toolkit: 1.7.13
 

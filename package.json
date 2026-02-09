@@ -1,6 +1,6 @@
 {
   "name": "recma-static-refiner",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -37,7 +37,7 @@
   "dependencies": {
     "@standard-schema/spec": "^1.1.0",
     "estree-toolkit": "^1.7.13",
-    "estree-util-to-static-value": "^0.5.0",
+    "estree-util-to-static-value": "^1.0.0",
     "estree-util-value-to-estree": "^3.5.0",
     "object-graph-delta": "^1.0.0"
   },
