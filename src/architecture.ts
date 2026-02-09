@@ -1,5 +1,3 @@
-import type { tryResolveStaticValue } from './extractor/static-resolver';
-
 /**
  * ARCHITECTURE INDEX (GROUPED)
  *
@@ -52,8 +50,8 @@ import type { tryResolveStaticValue } from './extractor/static-resolver';
  */
 
 /**
- * ARCHITECTURAL RATIONALE (1)
- * Dynamic Analysis Limitations & Passive Preservation
+ * ARCHITECTURAL RATIONALE
+ * 1. Dynamic Analysis Limitations & Passive Preservation
  *
  * ---
  *
@@ -128,8 +126,8 @@ import type { tryResolveStaticValue } from './extractor/static-resolver';
 type DynamicAnalysisLimitations = never;
 
 /**
- * ARCHITECTURAL RATIONALE (2)
- * Motivation for Preservation (The "Code vs. Data" Problem)
+ * ARCHITECTURAL RATIONALE
+ * 2. Motivation for Preservation (The "Code vs. Data" Problem)
  *
  * ---
  *
@@ -169,8 +167,8 @@ type DynamicAnalysisLimitations = never;
 type PreservationMotivation = never;
 
 /**
- * ARCHITECTURAL DEFINITION (3)
- * Static Data Patterns
+ * ARCHITECTURAL DEFINITION
+ * 3. Static Data Patterns
  *
  * ---
  *
@@ -184,7 +182,7 @@ type PreservationMotivation = never;
  * ------------------
  *
  * 1. Directly-resolvable expressions
- *    An expression is considered static if it is resolved by {@link tryResolveStaticValue}.
+ *    An expression is considered static if it is resolved by `tryResolveStaticValue`.
  *    This includes supported atomic constants and other expression forms that
  *    can be determined without recursion.
  *
@@ -196,15 +194,15 @@ type PreservationMotivation = never;
  *      - Spread elements (`...x`) are not statically extractable.
  *
  *    - ObjectExpression
- *      - Keys must be statically extractable (see {@link extractPropertyKey}).
+ *      - Keys must be statically extractable (see `extractPropertyKey`).
  *      - Values must themselves match these static data patterns.
  *      - Spread properties (`...x`) and computed keys are not statically extractable.
  */
 export type StaticDataPatterns = never;
 
 /**
- * ARCHITECTURAL DEFINITION (4)
- * Runtime Expressions (Non-static Forms)
+ * ARCHITECTURAL DEFINITION
+ * 4. Runtime Expressions (Non-static Forms)
  *
  * ---
  *
@@ -217,7 +215,7 @@ export type StaticDataPatterns = never;
  * Some syntax classes below may be handled in narrow, explicitly defined cases:
  *
  * - Constant-like identifiers and fully-static template literals may resolve via
- *   {@link tryResolveStaticValue}.
+ *   `tryResolveStaticValue`.
  *
  * - Runtime subtrees under preserved keys are transported (not evaluated) via
  *   ExpressionRef placeholders (see {@link PreservedPropStrategy}).
@@ -265,8 +263,8 @@ export type StaticDataPatterns = never;
 type RuntimeExpressionPatterns = never;
 
 /**
- * ARCHITECTURAL DEFINITION (5)
- * ExpressionRef Placeholder (The Sentinel)
+ * ARCHITECTURAL DEFINITION
+ * 5. ExpressionRef Placeholder (The Sentinel)
  *
  * ---
  *
@@ -301,8 +299,8 @@ type RuntimeExpressionPatterns = never;
 export type ExpressionRefPlaceholder = never;
 
 /**
- * ARCHITECTURAL POLICY (6)
- * Preserved Props (Transport)
+ * ARCHITECTURAL POLICY
+ * 6. Preserved Props (Transport)
  *
  * ---
  *
@@ -363,8 +361,8 @@ export type ExpressionRefPlaceholder = never;
 export type PreservedPropStrategy = never;
 
 /**
- * ARCHITECTURAL POLICY (7)
- * Zero-Tolerance Patch Policy
+ * ARCHITECTURAL POLICY
+ * 7. Zero-Tolerance Patch Policy
  *
  * ---
  *
@@ -419,8 +417,8 @@ export type PreservedPropStrategy = never;
 export type ZeroTolerancePatchPolicy = never;
 
 /**
- * ARCHITECTURAL LIFECYCLE (8)
- * Preserved Subtree Lifecycle (ExpressionRef Round-Trip)
+ * ARCHITECTURAL LIFECYCLE
+ * 8. Preserved Subtree Lifecycle (ExpressionRef Round-Trip)
  *
  * ---
  *
@@ -515,8 +513,8 @@ export type ZeroTolerancePatchPolicy = never;
 export type PreservedSubtreeLifecycle = never;
 
 /**
- * ARCHITECTURAL CONCEPT (9)
- * AST Topology Mismatch
+ * ARCHITECTURAL CONCEPT
+ * 9. AST Topology Mismatch
  *
  * ---
  *
@@ -571,8 +569,8 @@ export type PreservedSubtreeLifecycle = never;
 export type AstTopologyMismatch = never;
 
 /**
- * ARCHITECTURAL STRATEGY (10)
- * Leaf-Only Patching
+ * ARCHITECTURAL STRATEGY
+ * 10. Leaf-Only Patching
  *
  * ---
  *
