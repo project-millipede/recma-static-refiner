@@ -1,5 +1,5 @@
 import { hasArrayIndex, isArray, isPlainObject } from '../guards';
-import { PropertyPath } from '../types';
+import type { PropertyPath } from '../types';
 
 /**
  * Checks whether a single object key is configured to be preserved.

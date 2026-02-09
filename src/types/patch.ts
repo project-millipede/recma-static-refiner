@@ -1,19 +1,8 @@
+import type { PropertyPath } from 'estree-util-to-static-value';
 import type { LeafOnlyPatchingConstraint } from '../architecture';
-import { Simplify } from './types-helper';
+import type { Simplify } from './types-helper';
 
-/**
- * A path into a nested props structure.
- *
- * Conventions:
- * - `string` segments address object keys.
- * - `number` segments address array indices.
- *
- * Examples:
- * - `['title']`
- * - `['meta', 'author', 'name']`
- * - `['items', 0, 'id']`
- */
-export type PropertyPath = (string | number)[];
+export type { PropertyPath };
 
 /**
  * The mutation primitive describing how to modify the AST.

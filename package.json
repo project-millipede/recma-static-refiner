@@ -1,6 +1,6 @@
 {
   "name": "recma-static-refiner",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -31,13 +31,13 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run typecheck && npm run build"
   },
   "dependencies": {
     "@standard-schema/spec": "^1.1.0",
     "estree-toolkit": "^1.7.13",
+    "estree-util-to-static-value": "^0.5.0",
     "estree-util-value-to-estree": "^3.5.0",
     "object-graph-delta": "^1.0.0"
   },
@@ -46,10 +46,8 @@
   },
   "devDependencies": {
     "@types/estree": "^1.0.8",
-    "meriyah": "^7.0.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "unified": "^11.0.5",
-    "vitest": "^4.0.18"
+    "unified": "^11.0.5"
   }
 }

@@ -1,4 +1,7 @@
 import type { Visitors, NodePath, types } from 'estree-toolkit';
+
+import { extractStaticProps } from 'estree-util-to-static-value';
+
 import type { PluginOptions } from './types';
 import type {
   ResolveComponentMatch,
@@ -11,10 +14,10 @@ import { applyPatchesToEstree } from './patcher-object';
 import { consolidatePatches } from './consolidatePatches';
 import { reportPatchFailure } from './report';
 import { planPrunePatches } from './prune-patches';
-import { extractStaticProps } from './extractor/index';
 import { assertPatchesRespectPreservation } from './patch-guards';
 import { stringifyPropertyPath } from './utils/property-path-key';
 import { collectDerivePatches } from './derive-patches';
+import { createExpressionRef } from './expression-ref';
 
 /**
  * Processes a single matched component callsite.
@@ -89,10 +92,13 @@ function processComponent(
     {
       preservedKeys,
       onPreservedExpression: info => {
-        preservedExpressionsByPath.set(
-          stringifyPropertyPath(info.path),
-          info.expression
-        );
+        if (info.expression) {
+          preservedExpressionsByPath.set(
+            stringifyPropertyPath(info.path),
+            info.expression
+          );
+        }
+        return createExpressionRef(info.path);
       }
     },
     `${componentName}.props`

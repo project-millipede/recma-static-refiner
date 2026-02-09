@@ -7,6 +7,7 @@ import {
   traverse
 } from 'estree-toolkit';
 import { valueToEstree } from 'estree-util-value-to-estree';
+import { extractPropertyKey } from 'estree-util-to-static-value';
 
 import type {
   StaticDataPatterns,
@@ -15,7 +16,6 @@ import type {
 } from './architecture';
 import type { PropertyPatch, PropertyPath } from './types';
 
-import { extractPropertyKey } from './extractor/key-extractor';
 import { isPatchablePropsRoot, isPlainObject } from './guards';
 
 import { type ExpressionRefResolver, isExpressionRef } from './expression-ref';
