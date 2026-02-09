@@ -1,3 +1,5 @@
+import { diff } from 'object-graph-delta';
+
 import type {
   PreservedSubtreeLifecycle,
   LeafOnlyPatchingConstraint
@@ -5,7 +7,6 @@ import type {
 
 import type { SetPropertyPatch } from './types';
 
-import { diff } from './differ/index';
 import { isPlainObject } from './guards';
 import { applyOverlay } from './object-overlay';
 
@@ -139,7 +140,10 @@ export function calculatePatches(
   );
 
   // 2.2 Change Detection: Apply Diff Strategy.
-  const difference = diff(extractedProps, diffTarget);
+  const difference = diff(extractedProps, diffTarget, {
+    arrayPolicy: 'atomic',
+    arrayEquality: 'reference'
+  });
 
   const patches: SetPropertyPatch[] = [];
 

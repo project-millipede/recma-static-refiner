@@ -24,7 +24,8 @@
   "dependencies": {
     "@standard-schema/spec": "^1.1.0",
     "estree-toolkit": "^1.7.13",
-    "estree-util-value-to-estree": "^3.5.0"
+    "estree-util-value-to-estree": "^3.5.0",
+    "object-graph-delta": "^1.0.0"
   },
   "peerDependencies": {
     "unified": "^11.0.0"
