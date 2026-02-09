@@ -49,6 +49,13 @@ npm install recma-static-refiner
 pnpm add recma-static-refiner
 ```
 
+## Implementation Notes
+
+This plugin relies on two companion libraries:
+
+- [`estree-util-to-static-value`](https://github.com/project-millipede/estree-util-to-static-value) for safe static ESTree value extraction.
+- [`object-graph-delta`](https://github.com/project-millipede/object-graph-delta) for structural diffing of extracted/derived props.
+
 ## Examples
 
 ### Simple Prop Transformation (Optional)
