@@ -2,7 +2,6 @@ import type { tryResolveStaticValue } from './extractor/static-resolver';
 
 /**
  * ARCHITECTURE INDEX (GROUPED)
- * =============================================================================
  *
  * RATIONALE
  * 1. Dynamic Analysis Limitations & Passive Preservation
@@ -32,7 +31,6 @@ import type { tryResolveStaticValue } from './extractor/static-resolver';
 
 /**
  * HEADER TAXONOMY
- * =============================================================================
  *
  * - POLICY:
  *   Non-negotiable rule (`must` / `must not`) and enforcement semantics.
@@ -54,8 +52,10 @@ import type { tryResolveStaticValue } from './extractor/static-resolver';
  */
 
 /**
- * ARCHITECTURAL RATIONALE (1): Dynamic Analysis Limitations & Passive Preservation
- * =============================================================================
+ * ARCHITECTURAL RATIONALE (1)
+ * Dynamic Analysis Limitations & Passive Preservation
+ *
+ * ---
  *
  * This plugin runs at **build time** on an ESTree AST. It does not execute code.
  * Therefore, many runtime expressions cannot be resolved to concrete values.
@@ -128,8 +128,51 @@ import type { tryResolveStaticValue } from './extractor/static-resolver';
 type DynamicAnalysisLimitations = never;
 
 /**
- * ARCHITECTURAL DEFINITION (3): Static Data Patterns
- * =============================================================================
+ * ARCHITECTURAL RATIONALE (2)
+ * Motivation for Preservation (The "Code vs. Data" Problem)
+ *
+ * ---
+ *
+ * This section defines the architectural challenge that necessitates the
+ * "ExpressionRef Round-Trip" mechanism.
+ *
+ * 1. The Conflict
+ * ---------------
+ * **Static Analysis** requires resolving values to **Plain Data**
+ * (deterministic strings, numbers, objects) at build time.
+ * However, React and MDX components often receive properties that contain
+ * **Executable Code** or **Runtime Objects**.
+ *
+ * 2. Common Runtime Patterns
+ * --------------------------
+ * Unlike configuration props (`id="123"`), content props often use:
+ *
+ * - JSX Content: `<Card><Strong>Hello</Strong></Card>`
+ *   Nature: A function call (`_jsx(...)`) returning a runtime object.
+ *
+ * - Render Props: `<List>{item => <Item val={item} />}</List>`
+ *   Nature: An executable function definition.
+ *
+ * - Fragments/Arrays: `<>{[...]}</>`
+ *   Nature: Complex structural types often containing mixed content.
+ *
+ * - References: `<Comp>{content}</Comp>`
+ *   Nature: A variable identifier referencing unknown runtime data.
+ *
+ * 3. The Resolution
+ * -----------------
+ * Attempting to convert these patterns into static data causes data loss or
+ * build failures. Therefore, the system must distinguish between:
+ * - **Data Props:** Extracted and validated strictly as static values.
+ * - **Preserved Props:** Treated as opaque subtrees and transported verbatim.
+ */
+type PreservationMotivation = never;
+
+/**
+ * ARCHITECTURAL DEFINITION (3)
+ * Static Data Patterns
+ *
+ * ---
  *
  * "Static data" is the subset of ESTree expressions that the extractor can
  * convert into deterministic plain JS data without executing code.
@@ -160,8 +203,10 @@ type DynamicAnalysisLimitations = never;
 export type StaticDataPatterns = never;
 
 /**
- * ARCHITECTURAL DEFINITION (4): Runtime Expressions (Non-static Forms)
- * =============================================================================
+ * ARCHITECTURAL DEFINITION (4)
+ * Runtime Expressions (Non-static Forms)
+ *
+ * ---
  *
  * "Runtime Expressions" are AST nodes whose value depends on runtime state or
  * execution, and therefore cannot be converted into deterministic plain data at
@@ -220,8 +265,46 @@ export type StaticDataPatterns = never;
 type RuntimeExpressionPatterns = never;
 
 /**
- * ARCHITECTURAL POLICY (6): Preserved Props (Transport)
- * =============================================================================
+ * ARCHITECTURAL DEFINITION (5)
+ * ExpressionRef Placeholder (The Sentinel)
+ *
+ * ---
+ *
+ * An "ExpressionRef" is a JSON-serializable sentinel object used to represent
+ * an opaque AST node during the data extraction phase.
+ *
+ * **Purpose:**
+ * To allow "Opaque Transport" of runtime code through a pipeline that expects
+ * plain data. It acts as a proxy for an AST node that cannot be serialized.
+ *
+ * **Structure Definition:**
+ *
+ * 1. **Brand (`__kind`):**
+ *    - *Value:* `'recma.expression_ref'`
+ *    - *Purpose:* A unique tagged discriminant. It ensures the object is not
+ *      mistaken for user data (e.g., a user prop named `__kind`).
+ *    - *Usage:* Enables the `isExpressionRef` type guard.
+ *
+ * 2. **Pointer (`path`):**
+ *    - *Value:* `(string | number)[]`
+ *    - *Purpose:* A logical pointer to the location of the preserved value
+ *      within the extracted props structure.
+ *    - *Examples:*
+ *      - `["children"]` (Root prop)
+ *      - `["items", 0, "content"]` (Nested inside array/object)
+ *
+ * **Role in Pipeline:**
+ * - **Extraction:** Replaces the dynamic AST node with this placeholder.
+ * - **Validation:** Passes through as a standard object (schema must allow it).
+ * - **Patching:** Detected by the re-builder and swapped back for the real node.
+ */
+export type ExpressionRefPlaceholder = never;
+
+/**
+ * ARCHITECTURAL POLICY (6)
+ * Preserved Props (Transport)
+ *
+ * ---
  *
  * **Context:** Props configured in `preservedKeys` (default: `['children']`).
  *
@@ -280,81 +363,66 @@ type RuntimeExpressionPatterns = never;
 export type PreservedPropStrategy = never;
 
 /**
- * ARCHITECTURAL DEFINITION (5): ExpressionRef Placeholder (The Sentinel)
- * =============================================================================
+ * ARCHITECTURAL POLICY (7)
+ * Zero-Tolerance Patch Policy
  *
- * An "ExpressionRef" is a JSON-serializable sentinel object used to represent
- * an opaque AST node during the data extraction phase.
+ * ---
  *
- * **Purpose:**
- * To allow "Opaque Transport" of runtime code through a pipeline that expects
- * plain data. It acts as a proxy for an AST node that cannot be serialized.
+ * This policy governs the behavior when a planned patch remains unapplied after
+ * the patching phase.
  *
- * **Structure Definition:**
+ * The Policy: STRICT (Always Throw)
+ * ---------------------------------
+ * Any unapplied patch triggers a fatal build error.
  *
- * 1. **Brand (`__kind`):**
- *    - *Value:* `'recma.expression_ref'`
- *    - *Purpose:* A unique tagged discriminant. It ensures the object is not
- *      mistaken for user data (e.g., a user prop named `__kind`).
- *    - *Usage:* Enables the `isExpressionRef` type guard.
+ * 1. Rationale
+ *    The system operates on **Deterministic Intent**. If the Planner generates a
+ *    patch, it indicates that the configuration (Schema, Derived Logic, or Pruning)
+ *    explicitly demanded a change.
  *
- * 2. **Pointer (`path`):**
- *    - *Value:* `(string | number)[]`
- *    - *Purpose:* A logical pointer to the location of the preserved value
- *      within the extracted props structure.
- *    - *Examples:*
- *      - `["children"]` (Root prop)
- *      - `["items", 0, "content"]` (Nested inside array/object)
+ *    Failure to apply that change results in a critical discrepancy between the
+ *    **Configured Intent** (the expected data shape) and the **Output Code**
+ *    (the runtime behavior). To prevent shipping code that violates the
+ *    configuration, the build process must abort.
  *
- * **Role in Pipeline:**
- * - **Extraction:** Replaces the dynamic AST node with this placeholder.
- * - **Validation:** Passes through as a standard object (schema must allow it).
- * - **Patching:** Detected by the re-builder and swapped back for the real node.
+ * 2. Common Failure Triggers
+ *    Patches fail when the source code structure prevents safe editing under the
+ *    {@link LeafOnlyPatchingConstraint}.
+ *
+ *    - Missing Slots (Structural Requirements):
+ *      Operations require a distinct, statically addressable `Property` node in
+ *      the source AST.
+ *      - Derive / Validation:
+ *        To inject a computed value (Derive) or write back a transformed value
+ *        (Validation), a distinct slot (e.g. `initialState={null}`) must
+ *        already exist to be overwritten.
+ *      - Prune:
+ *        To remove a property, the key must exist explicitly as a `Property` node.
+ *
+ *    - Non-Literal Roots (Dynamic Expressions):
+ *      Attempting to patch a props argument defined via dynamic expressions
+ *      (e.g. conditionals `cond ? a : b` or variables) rather than a static
+ *      Object Literal.
+ *      Because the keys are not statically resolvable (see {@link DynamicAnalysisLimitations}),
+ *      the structure lacks the static topology required for safe modification.
+ *
+ * 3. Outcome
+ *    - Behavior: A fatal exception is thrown immediately.
+ *    - Result: The build process aborts.
+ *    - Remediation:
+ *      The developer must manually adjust the source code to satisfy the
+ *      structural requirements.
+ *      For example, explicitly defining a placeholder property
+ *      (`initialState={null}`) creates the static `Property` node required for
+ *      a Derived Patch to perform an overwrite.
  */
-export type ExpressionRefPlaceholder = never;
+export type ZeroTolerancePatchPolicy = never;
 
 /**
- * ARCHITECTURAL RATIONALE (2): Motivation for Preservation (The "Code vs. Data" Problem)
- * =============================================================================
+ * ARCHITECTURAL LIFECYCLE (8)
+ * Preserved Subtree Lifecycle (ExpressionRef Round-Trip)
  *
- * This section defines the architectural challenge that necessitates the
- * "ExpressionRef Round-Trip" mechanism.
- *
- * 1. The Conflict
- * ---------------
- * **Static Analysis** requires resolving values to **Plain Data**
- * (deterministic strings, numbers, objects) at build time.
- * However, React and MDX components often receive properties that contain
- * **Executable Code** or **Runtime Objects**.
- *
- * 2. Common Runtime Patterns
- * --------------------------
- * Unlike configuration props (`id="123"`), content props often use:
- *
- * - JSX Content: `<Card><Strong>Hello</Strong></Card>`
- *   Nature: A function call (`_jsx(...)`) returning a runtime object.
- *
- * - Render Props: `<List>{item => <Item val={item} />}</List>`
- *   Nature: An executable function definition.
- *
- * - Fragments/Arrays: `<>{[...]}</>`
- *   Nature: Complex structural types often containing mixed content.
- *
- * - References: `<Comp>{content}</Comp>`
- *   Nature: A variable identifier referencing unknown runtime data.
- *
- * 3. The Resolution
- * -----------------
- * Attempting to convert these patterns into static data causes data loss or
- * build failures. Therefore, the system must distinguish between:
- * - **Data Props:** Extracted and validated strictly as static values.
- * - **Preserved Props:** Treated as opaque subtrees and transported verbatim.
- */
-type PreservationMotivation = never;
-
-/**
- * ARCHITECTURAL LIFECYCLE (8): Preserved Subtree Lifecycle (ExpressionRef Round-Trip)
- * =============================================================================
+ * ---
  *
  * This describes the mechanism used to transport runtime code through the static
  * validation pipeline without executing it.
@@ -447,8 +515,10 @@ type PreservationMotivation = never;
 export type PreservedSubtreeLifecycle = never;
 
 /**
- * ARCHITECTURAL CONCEPT (9): AST Topology Mismatch
- * =============================================================================
+ * ARCHITECTURAL CONCEPT (9)
+ * AST Topology Mismatch
+ *
+ * ---
  *
  * This concept defines the structural divergence between the **Plain JavaScript
  * Data Structure** (used by the Extractor/Planner) and the **Physical AST
@@ -501,8 +571,10 @@ export type PreservedSubtreeLifecycle = never;
 export type AstTopologyMismatch = never;
 
 /**
- * ARCHITECTURAL STRATEGY (10): Leaf-Only Patching
- * =============================================================================
+ * ARCHITECTURAL STRATEGY (10)
+ * Leaf-Only Patching
+ *
+ * ---
  *
  * This strategy defines the physical limits of AST modification allowed by the
  * plugin. It serves as the enforcement mechanism for the Patch Planning Protocol.
@@ -589,57 +661,3 @@ export type AstTopologyMismatch = never;
  *   `Symbol`, `Promise`), it must throw a build error.
  */
 export type LeafOnlyPatchingConstraint = never;
-
-/**
- * ARCHITECTURAL POLICY (7): Zero-Tolerance Patch Policy
- * =============================================================================
- *
- * This policy governs the behavior when a planned patch remains unapplied after
- * the patching phase.
- *
- * The Policy: STRICT (Always Throw)
- * ---------------------------------
- * Any unapplied patch triggers a fatal build error.
- *
- * 1. Rationale
- *    The system operates on **Deterministic Intent**. If the Planner generates a
- *    patch, it indicates that the configuration (Schema, Derived Logic, or Pruning)
- *    explicitly demanded a change.
- *
- *    Failure to apply that change results in a critical discrepancy between the
- *    **Configured Intent** (the expected data shape) and the **Output Code**
- *    (the runtime behavior). To prevent shipping code that violates the
- *    configuration, the build process must abort.
- *
- * 2. Common Failure Triggers
- *    Patches fail when the source code structure prevents safe editing under the
- *    {@link LeafOnlyPatchingConstraint}.
- *
- *    - Missing Slots (Structural Requirements):
- *      Operations require a distinct, statically addressable `Property` node in
- *      the source AST.
- *      - Derive / Validation:
- *        To inject a computed value (Derive) or write back a transformed value
- *        (Validation), a distinct slot (e.g. `initialState={null}`) must
- *        already exist to be overwritten.
- *      - Prune:
- *        To remove a property, the key must exist explicitly as a `Property` node.
- *
- *    - Non-Literal Roots (Dynamic Expressions):
- *      Attempting to patch a props argument defined via dynamic expressions
- *      (e.g. conditionals `cond ? a : b` or variables) rather than a static
- *      Object Literal.
- *      Because the keys are not statically resolvable (see {@link DynamicAnalysisLimitations}),
- *      the structure lacks the static topology required for safe modification.
- *
- * 3. Outcome
- *    - Behavior: A fatal exception is thrown immediately.
- *    - Result: The build process aborts.
- *    - Remediation:
- *      The developer must manually adjust the source code to satisfy the
- *      structural requirements.
- *      For example, explicitly defining a placeholder property
- *      (`initialState={null}`) creates the static `Property` node required for
- *      a Derived Patch to perform an overwrite.
- */
-export type ZeroTolerancePatchPolicy = never;
