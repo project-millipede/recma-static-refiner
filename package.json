@@ -14,6 +14,20 @@
   "files": [
     "dist"
   ],
+  "keywords": [
+    "mdx",
+    "mdx-plugin",
+    "recma",
+    "meta-props",
+    "static-data-extraction",
+    "build-time-validation",
+    "standard-schema",
+    "zod",
+    "valibot",
+    "arktype",
+    "prop-derivation",
+    "zero-runtime"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
