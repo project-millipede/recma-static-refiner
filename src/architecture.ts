@@ -1,7 +1,60 @@
 import type { tryResolveStaticValue } from './extractor/static-resolver';
 
 /**
- * ARCHITECTURAL NOTE: Dynamic Analysis Limitations & Passive Preservation
+ * ARCHITECTURE INDEX (GROUPED)
+ * =============================================================================
+ *
+ * RATIONALE
+ * 1. Dynamic Analysis Limitations & Passive Preservation
+ * 2. Motivation for Preservation (The "Code vs. Data" Problem)
+ *
+ * DEFINITION
+ * 3. Static Data Patterns
+ * 4. Runtime Expressions (Non-static Forms)
+ * 5. ExpressionRef Placeholder (The Sentinel)
+ *
+ * POLICY
+ * 6. Preserved Props (Transport)
+ * 7. Zero-Tolerance Patch Policy
+ *
+ * LIFECYCLE
+ * 8. Preserved Subtree Lifecycle (ExpressionRef Round-Trip)
+ *
+ * CONCEPT
+ * 9. AST Topology Mismatch
+ *
+ * STRATEGY
+ * 10. Leaf-Only Patching
+ *
+ * Recommended reading flow:
+ * RATIONALE -> DEFINITION -> POLICY -> LIFECYCLE -> CONCEPT -> STRATEGY -> POLICY (enforcement)
+ */
+
+/**
+ * HEADER TAXONOMY
+ * =============================================================================
+ *
+ * - POLICY:
+ *   Non-negotiable rule (`must` / `must not`) and enforcement semantics.
+ *
+ * - STRATEGY:
+ *   Chosen implementation approach used to satisfy policies.
+ *
+ * - DEFINITION:
+ *   Formal meaning and scope of a term or boundary.
+ *
+ * - RATIONALE:
+ *   Why a policy or strategy exists.
+ *
+ * - CONCEPT:
+ *   Mental model framing the problem space.
+ *
+ * - LIFECYCLE:
+ *   Step-by-step process flow across phases.
+ */
+
+/**
+ * ARCHITECTURAL RATIONALE (1): Dynamic Analysis Limitations & Passive Preservation
  * =============================================================================
  *
  * This plugin runs at **build time** on an ESTree AST. It does not execute code.
@@ -75,7 +128,7 @@ import type { tryResolveStaticValue } from './extractor/static-resolver';
 type DynamicAnalysisLimitations = never;
 
 /**
- * DEFINITION: Static Data Patterns
+ * ARCHITECTURAL DEFINITION (3): Static Data Patterns
  * =============================================================================
  *
  * "Static data" is the subset of ESTree expressions that the extractor can
@@ -107,7 +160,7 @@ type DynamicAnalysisLimitations = never;
 export type StaticDataPatterns = never;
 
 /**
- * DEFINITION: Runtime Expressions (Non-static Forms)
+ * ARCHITECTURAL DEFINITION (4): Runtime Expressions (Non-static Forms)
  * =============================================================================
  *
  * "Runtime Expressions" are AST nodes whose value depends on runtime state or
@@ -167,7 +220,7 @@ export type StaticDataPatterns = never;
 type RuntimeExpressionPatterns = never;
 
 /**
- * STRATEGY 2: Preserved Props (Transport)
+ * ARCHITECTURAL POLICY (6): Preserved Props (Transport)
  * =============================================================================
  *
  * **Context:** Props configured in `preservedKeys` (default: `['children']`).
@@ -227,7 +280,7 @@ type RuntimeExpressionPatterns = never;
 export type PreservedPropStrategy = never;
 
 /**
- * DEFINITION: ExpressionRef Placeholder (The Sentinel)
+ * ARCHITECTURAL DEFINITION (5): ExpressionRef Placeholder (The Sentinel)
  * =============================================================================
  *
  * An "ExpressionRef" is a JSON-serializable sentinel object used to represent
@@ -261,7 +314,7 @@ export type PreservedPropStrategy = never;
 export type ExpressionRefPlaceholder = never;
 
 /**
- * ARCHITECTURAL NOTE: Motivation for Preservation (The "Code vs. Data" Problem)
+ * ARCHITECTURAL RATIONALE (2): Motivation for Preservation (The "Code vs. Data" Problem)
  * =============================================================================
  *
  * This section defines the architectural challenge that necessitates the
@@ -300,7 +353,7 @@ export type ExpressionRefPlaceholder = never;
 type PreservationMotivation = never;
 
 /**
- * ARCHITECTURAL NOTE: Preserved Subtree Lifecycle (ExpressionRef Round-Trip)
+ * ARCHITECTURAL LIFECYCLE (8): Preserved Subtree Lifecycle (ExpressionRef Round-Trip)
  * =============================================================================
  *
  * This describes the mechanism used to transport runtime code through the static
@@ -394,7 +447,7 @@ type PreservationMotivation = never;
 export type PreservedSubtreeLifecycle = never;
 
 /**
- * ARCHITECTURAL CONCEPT: AST Topology Mismatch
+ * ARCHITECTURAL CONCEPT (9): AST Topology Mismatch
  * =============================================================================
  *
  * This concept defines the structural divergence between the **Plain JavaScript
@@ -448,7 +501,7 @@ export type PreservedSubtreeLifecycle = never;
 export type AstTopologyMismatch = never;
 
 /**
- * ARCHITECTURAL STRATEGY: Leaf-Only Patching
+ * ARCHITECTURAL STRATEGY (10): Leaf-Only Patching
  * =============================================================================
  *
  * This strategy defines the physical limits of AST modification allowed by the
@@ -538,7 +591,7 @@ export type AstTopologyMismatch = never;
 export type LeafOnlyPatchingConstraint = never;
 
 /**
- * ARCHITECTURAL STRATEGY: Zero-Tolerance Patch Policy
+ * ARCHITECTURAL POLICY (7): Zero-Tolerance Patch Policy
  * =============================================================================
  *
  * This policy governs the behavior when a planned patch remains unapplied after
