@@ -4,7 +4,18 @@
 
 A **compile-time** Unified/Recma plugin that moves MDX prop processing from runtime to build time—validating, transforming, and pruning props during static bundling.
 
-## Features
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Getting Started](#getting-started)
+3. [Quick Start](#quick-start)
+4. [Usage](#usage)
+5. [Reference](#reference)
+6. [Capabilities](#capabilities)
+
+## Overview
+
+### Features
 
 - **🛡️ Build-Time Validation:** Enforce schemas via Standard Schema V1 (Zod, Valibot, ArkType) at compile time; no validation code ships to the client.
 - **⚡ Pre-Computed Derivation:** Complex calculations happen at build time; results are baked in as literals.
@@ -12,11 +23,11 @@ A **compile-time** Unified/Recma plugin that moves MDX prop processing from runt
 - **✨ Zero Client-Side Cost:** No plugin code, validators, or derivation logic executes in the browser.
 - **🔒 Type-Safe Registry:** Full TypeScript inference with strict contracts on prop shapes and derived values.
 
-## Why Build-Time Processing?
+### Why Build-Time Processing?
 
 By default, MDX components receive props as-is and handle them at runtime—validation, derivation, and cleanup all happen in the browser. This plugin provides an **escape hatch to compile time**: move that work to the build step and ship only the results.
 
-### When You Move Work to Build Time
+#### When You Move Work to Build Time
 
 | Aspect           | Runtime (Default)               | Build Time (This Plugin)                                    |
 | ---------------- | ------------------------------- | ----------------------------------------------------------- |
@@ -25,11 +36,11 @@ By default, MDX components receive props as-is and handle them at runtime—vali
 | **Data cleanup** | Source props travel to client   | Internal props stripped; smaller bundles                    |
 | **Type safety**  | Runtime checks or manual        | Schema-guaranteed; full TypeScript inference                |
 
-### When Dynamicity Remains
+#### When Dynamicity Remains
 
 Not all props are statically extractable. Runtime expressions (variables, function calls, JSX) are **preserved verbatim** and passed through to the component. The plugin processes what it can statically; the rest remains dynamic.
 
-## Static Data Processing Pipeline
+### Static Data Processing Pipeline
 
 At build time, the plugin extracts **statically determinable data** and runs it through three phases:
 
@@ -41,7 +52,9 @@ At build time, the plugin extracts **statically determinable data** and runs it 
 
 The result: your runtime components receive plain, static objects with all processing already complete.
 
-## Installation
+## Getting Started
+
+### Installation
 
 ```bash
 npm install recma-static-refiner
@@ -49,16 +62,24 @@ npm install recma-static-refiner
 pnpm add recma-static-refiner
 ```
 
-## Implementation Notes
+### Quick Start
+
+If you want the shortest path to adoption:
+
+1. Define your component rules: [Step 1: Define Rules](#step-1-define-rules)
+2. Register the plugin in your MDX pipeline: [Step 2: Register Plugin](#step-2-register-plugin)
+3. Verify output expectations: [Example: MDX Source to Compiled Output](#example-mdx-source-to-compiled-output)
+
+### Implementation Notes
 
 This plugin relies on two companion libraries:
 
 - [`estree-util-to-static-value`](https://github.com/project-millipede/estree-util-to-static-value) for safe static ESTree value extraction.
 - [`object-graph-delta`](https://github.com/project-millipede/object-graph-delta) for structural diffing of extracted/derived props.
 
-## Examples
+### Examples
 
-### Simple Prop Transformation (Optional)
+#### Simple Prop Transformation (Optional)
 
 Transform a string prop to a number:
 
@@ -78,7 +99,7 @@ Output: `<Counter initial={5} />`
 
 > For simple cases like this, you don't need this plugin—write `<Counter initial={5} />` directly instead.
 
-### Real-World: Meta Props (Essential)
+#### Real-World: Meta Props (Essential)
 
 Where this plugin becomes essential: processing **meta props** from CodeHike or remark plugins, where values are extracted as strings:
 
@@ -121,9 +142,9 @@ const rules = defineRuleRegistry({
 });
 ```
 
-## How to Use
+## Usage
 
-> **Important:** This plugin requires **two configuration steps**: First define your component rules, then register the plugin with your MDX compiler.
+This plugin requires two configuration steps: define your component rules, then register the plugin with your MDX compiler.
 
 ### Step 1: Define Rules
 
@@ -235,7 +256,7 @@ const withMdx = require('@next/mdx')({
 export default withMdx(nextConfig);
 ```
 
-### Example: MDX Source → Compiled Output
+### Example: MDX Source to Compiled Output
 
 Given this MDX:
 
@@ -250,7 +271,7 @@ With the rule defined above, the plugin will:
 3. **Prune:** Remove `title`, `count`, and `_sourceId` from the runtime output
 4. **Output:** The compiled component receives only `{ doubledCount: 84 }`
 
-## Configuration Reference
+## Reference
 
 ### Plugin Options
 
